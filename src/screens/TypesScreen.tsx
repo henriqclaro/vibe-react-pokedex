@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
@@ -15,110 +16,157 @@ import { CustomDrawer } from '../components/CustomDrawer';
 import { PokemonDetailModal } from '../components/PokemonDetailModal';
 import { PokemonSummary } from '../types/pokemon';
 
-// Approximate card height for getItemLayout optimization
 const CARD_HEIGHT = 175;
 
 export const TypesScreen = () => {
-  const [selectedType, setSelectedType] = useState<string>('normal');
-  const [pokemons, setPokemons] = useState<PokemonSummary[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
-
-  // State for detail modal
-  const [detailVisible, setDetailVisible] = useState<boolean>(false);
+  const [selectedType,      setSelectedType]      = useState<string>('normal');
+  const [pokemons,          setPokemons]          = useState<PokemonSummary[]>([]);
+  const [loading,           setLoading]           = useState<boolean>(false);
+  const [drawerVisible,     setDrawerVisible]     = useState<boolean>(false);
+  const [detailVisible,     setDetailVisible]     = useState<boolean>(false);
   const [selectedPokemonId, setSelectedPokemonId] = useState<number | null>(null);
 
+  // Header entrance (matches SeasonsScreen)
+  const headerSlide = useRef(new Animated.Value(-8)).current;
+  const headerFade  = useRef(new Animated.Value(0)).current;
+
+  // Grid fade-out/in on type change
+  const gridOpacity = useRef(new Animated.Value(1)).current;
+
+  // Badge pulse on type change
+  const badgeScale  = useRef(new Animated.Value(1)).current;
+
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+  const typeColor  = (theme.colors.types as Record<string, string>)[selectedType] ?? theme.colors.primary;
+
+  // Run header entrance once on mount
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerFade,  { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(headerSlide, { toValue: 0, friction: 7, tension: 70, useNativeDriver: true }),
+    ]).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Pulse the badge when type changes
+  useEffect(() => {
+    Animated.sequence([
+      Animated.spring(badgeScale, { toValue: 1.12, friction: 4, tension: 200, useNativeDriver: true }),
+      Animated.spring(badgeScale, { toValue: 1,    friction: 4, tension: 200, useNativeDriver: true }),
+    ]).start();
+  }, [selectedType, badgeScale]);
+
   const fetchPokemons = useCallback(async () => {
+    // Fade grid out
+    await new Promise<void>((resolve) => {
+      Animated.timing(gridOpacity, {
+        toValue: 0,
+        duration: 160,
+        useNativeDriver: true,
+      }).start(() => resolve());
+    });
+
     setLoading(true);
     try {
       const data = await getPokemonsByType(selectedType);
       setPokemons(data);
-    } catch (error) {
-      console.error('Error fetching type pokemon:', error);
+    } catch (err) {
+      console.error('Error fetching type pokemon:', err);
     } finally {
       setLoading(false);
+      // Fade grid back in
+      Animated.timing(gridOpacity, {
+        toValue: 1,
+        duration: 320,
+        useNativeDriver: true,
+      }).start();
     }
-  }, [selectedType]);
+  }, [selectedType, gridOpacity]);
 
   useEffect(() => {
     fetchPokemons();
-  }, [selectedType, fetchPokemons]);
+  }, [fetchPokemons]);
 
   const handleCardPress = (id: number) => {
     setSelectedPokemonId(id);
     setDetailVisible(true);
   };
 
-  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
-
-  // Dynamic style based on selected type
-  const typeColor = theme.colors.types[selectedType] || theme.colors.primary;
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      {/* ── Header ──────────────────────────────────────────────────── */}
+      <Animated.View
+        style={[
+          styles.header,
+          { opacity: headerFade, transform: [{ translateY: headerSlide }] },
+        ]}
+      >
         <TouchableOpacity
           onPress={() => setDrawerVisible(true)}
-          style={[styles.menuButton, { borderColor: typeColor }]}
+          style={styles.menuButton}
           activeOpacity={0.7}
         >
-          <Text style={[styles.menuIcon, { color: typeColor }]}>☰</Text>
+          <Text style={styles.menuIcon}>☰</Text>
         </TouchableOpacity>
 
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerSubtitle}>Filtered by Type</Text>
-          <View style={[styles.typeHeaderBadge, { backgroundColor: typeColor }]}>
+          <Text style={styles.headerEyebrow}>Filtered by Type</Text>
+          <Animated.View
+            style={[
+              styles.typeHeaderBadge,
+              { backgroundColor: typeColor, transform: [{ scale: badgeScale }] },
+            ]}
+          >
             <Text style={styles.typeHeaderText}>{capitalize(selectedType)}</Text>
-          </View>
+          </Animated.View>
         </View>
 
-        {/* Balance layout */}
         <View style={styles.headerPlaceholder} />
-      </View>
+      </Animated.View>
 
-      {/* Loading state / Grid List */}
+      {/* ── List / Loading ───────────────────────────────────────────── */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={typeColor} />
-          <Text style={styles.loadingText}>Carregando Tipo {capitalize(selectedType)}...</Text>
+          <Text style={styles.loadingText}>Loading {capitalize(selectedType)} type…</Text>
         </View>
       ) : (
-        <FlatList<PokemonSummary>
-          data={pokemons}
-          keyExtractor={(item) => String(item.id)}
-          numColumns={2}
-          contentContainerStyle={styles.listContent}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={5}
-          removeClippedSubviews={true}
-          getItemLayout={(_data, index) => ({
-            length: CARD_HEIGHT,
-            offset: CARD_HEIGHT * Math.floor(index / 2),
-            index,
-          })}
-          renderItem={({ item }: { item: PokemonSummary }) => (
-            <PokemonCard
-              pokemon={item}
-              useArtwork={true} // Renders standard official artwork as requested
-              onPress={() => handleCardPress(item.id)}
-            />
-          )}
-        />
+        <Animated.View style={{ flex: 1, opacity: gridOpacity }}>
+          <FlatList<PokemonSummary>
+            data={pokemons}
+            keyExtractor={(item) => String(item.id)}
+            numColumns={2}
+            contentContainerStyle={styles.listContent}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
+            getItemLayout={(_data, index) => ({
+              length: CARD_HEIGHT,
+              offset: CARD_HEIGHT * Math.floor(index / 2),
+              index,
+            })}
+            renderItem={({ item }: { item: PokemonSummary }) => (
+              <PokemonCard
+                pokemon={item}
+                useArtwork={true}
+                onPress={() => handleCardPress(item.id)}
+              />
+            )}
+          />
+        </Animated.View>
       )}
 
-      {/* Types Selection Drawer */}
       <CustomDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         options={TYPES}
         selectedOption={selectedType}
         onSelect={setSelectedType}
-        title="Selecionar Tipo"
+        title="Select Type"
+        accentColor={typeColor}
       />
 
-      {/* Detail Modal */}
       <PokemonDetailModal
         visible={detailVisible}
         pokemonIdOrName={selectedPokemonId}
@@ -146,35 +194,38 @@ const styles = StyleSheet.create({
   menuButton: {
     width: 44,
     height: 44,
-    borderRadius: theme.roundness.md,
+    borderRadius: theme.roundness.full,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.glass,
-    borderWidth: 1.5,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
   },
   menuIcon: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 20,
+    color: theme.colors.textPrimary,
   },
   headerTitleContainer: {
     alignItems: 'center',
+    gap: 4,
   },
-  headerSubtitle: {
+  headerEyebrow: {
     fontSize: 10,
+    fontWeight: '700',
     textTransform: 'uppercase',
     color: theme.colors.textSecondary,
-    letterSpacing: 1,
-    marginBottom: 2,
+    letterSpacing: 1.5,
   },
   typeHeaderBadge: {
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: theme.roundness.full,
   },
   typeHeaderText: {
     fontSize: 14,
     fontWeight: 'bold',
     color: theme.colors.white,
+    letterSpacing: 0.3,
   },
   headerPlaceholder: {
     width: 44,
@@ -183,14 +234,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
   },
   loadingText: {
-    marginTop: theme.spacing.md,
     color: theme.colors.textSecondary,
     fontSize: 14,
+    textAlign: 'center',
   },
   listContent: {
     padding: theme.spacing.xs,
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: theme.spacing.xxl,
   },
 });

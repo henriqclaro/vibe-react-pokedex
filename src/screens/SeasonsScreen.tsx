@@ -17,54 +17,78 @@ import { PokemonDetailModal } from '../components/PokemonDetailModal';
 import { PokemonSummary } from '../types/pokemon';
 
 const REGION_OPTIONS = Object.keys(REGIONS);
-// Approximate card height for getItemLayout optimization (padding + image + text)
-const CARD_HEIGHT = 160;
+const CARD_HEIGHT    = 160;
 
 export const SeasonsScreen = () => {
-  const [selectedRegion, setSelectedRegion] = useState<string>('Kanto');
-  const [pokemons, setPokemons] = useState<PokemonSummary[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
-  
-  // State for detail modal
-  const [detailVisible, setDetailVisible] = useState<boolean>(false);
+  const [selectedRegion,  setSelectedRegion]  = useState<string>('Kanto');
+  const [pokemons,        setPokemons]        = useState<PokemonSummary[]>([]);
+  const [loading,         setLoading]         = useState<boolean>(false);
+  const [drawerVisible,   setDrawerVisible]   = useState<boolean>(false);
+  const [detailVisible,   setDetailVisible]   = useState<boolean>(false);
   const [selectedPokemonId, setSelectedPokemonId] = useState<number | null>(null);
 
-  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+  // Header drop-in
+  const headerSlide = useRef(new Animated.Value(-8)).current;
+  const headerFade  = useRef(new Animated.Value(0)).current;
+
+  // Grid fade-out/in on region change
+  const gridOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.timing(headerFadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, [headerFadeAnim]);
+    Animated.parallel([
+      Animated.timing(headerFade,  { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.spring(headerSlide, { toValue: 0, friction: 7, tension: 70, useNativeDriver: true }),
+    ]).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchPokemons = useCallback(async () => {
+    // Fade grid out
+    await new Promise<void>((resolve) => {
+      Animated.timing(gridOpacity, {
+        toValue: 0,
+        duration: 160,
+        useNativeDriver: true,
+      }).start(() => resolve());
+    });
+
     setLoading(true);
     try {
       const data = await getPokemonsByRegion(selectedRegion);
       setPokemons(data);
-    } catch (error) {
-      console.error('Error fetching regional pokemon:', error);
+    } catch (err) {
+      console.error('Error fetching regional pokemon:', err);
     } finally {
       setLoading(false);
+      // Fade grid back in
+      Animated.timing(gridOpacity, {
+        toValue: 1,
+        duration: 320,
+        useNativeDriver: true,
+      }).start();
     }
-  }, [selectedRegion]);
+  }, [selectedRegion, gridOpacity]);
 
   useEffect(() => {
     fetchPokemons();
-  }, [selectedRegion, fetchPokemons]);
+  }, [fetchPokemons]);
 
   const handleCardPress = (id: number) => {
     setSelectedPokemonId(id);
     setDetailVisible(true);
   };
 
+  const pokemonCount = REGIONS[selectedRegion]?.limit ?? pokemons.length;
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Custom Header */}
-      <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
+      {/* ── Header ──────────────────────────────────────────────────── */}
+      <Animated.View
+        style={[
+          styles.header,
+          { opacity: headerFade, transform: [{ translateY: headerSlide }] },
+        ]}
+      >
         <TouchableOpacity
           onPress={() => setDrawerVisible(true)}
           style={styles.menuButton}
@@ -72,57 +96,63 @@ export const SeasonsScreen = () => {
         >
           <Text style={styles.menuIcon}>☰</Text>
         </TouchableOpacity>
+
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerSubtitle}>Region</Text>
+          <Text style={styles.headerEyebrow}>Region</Text>
           <Text style={styles.headerTitle}>{selectedRegion}</Text>
+          {!loading && (
+            <Text style={styles.headerCount}>{pokemonCount} Pokémon</Text>
+          )}
         </View>
-        {/* Placeholder to balance the menu button layout */}
+
         <View style={styles.headerPlaceholder} />
       </Animated.View>
 
-      {/* Loading state / Grid List */}
+      {/* ── List / Loading ───────────────────────────────────────────── */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Carregando Pokémons...</Text>
+          <Text style={styles.loadingText}>
+            Loading {pokemonCount} Pokémon from {selectedRegion}…
+          </Text>
         </View>
       ) : (
-        <FlatList<PokemonSummary>
-          data={pokemons}
-          keyExtractor={(item) => String(item.id)}
-          numColumns={2}
-          contentContainerStyle={styles.listContent}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={5}
-          removeClippedSubviews={true}
-          getItemLayout={(_data, index) => ({
-            length: CARD_HEIGHT,
-            offset: CARD_HEIGHT * Math.floor(index / 2),
-            index,
-          })}
-          renderItem={({ item, index }: { item: PokemonSummary; index: number }) => (
-            <PokemonCard
-              pokemon={item}
-              useArtwork={false} // Uses default sprite as requested
-              onPress={() => handleCardPress(item.id)}
-              index={index}
-            />
-          )}
-        />
+        <Animated.View style={{ flex: 1, opacity: gridOpacity }}>
+          <FlatList<PokemonSummary>
+            data={pokemons}
+            keyExtractor={(item) => String(item.id)}
+            numColumns={2}
+            contentContainerStyle={styles.listContent}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
+            getItemLayout={(_data, index) => ({
+              length: CARD_HEIGHT,
+              offset: CARD_HEIGHT * Math.floor(index / 2),
+              index,
+            })}
+            renderItem={({ item, index }: { item: PokemonSummary; index: number }) => (
+              <PokemonCard
+                pokemon={item}
+                useArtwork={false}
+                onPress={() => handleCardPress(item.id)}
+                index={index}
+              />
+            )}
+          />
+        </Animated.View>
       )}
 
-      {/* Regional Drawer overlay */}
       <CustomDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         options={REGION_OPTIONS}
         selectedOption={selectedRegion}
         onSelect={setSelectedRegion}
-        title="Selecionar Região"
+        title="Select Region"
       />
 
-      {/* Detail Modal */}
       <PokemonDetailModal
         visible={detailVisible}
         pokemonIdOrName={selectedPokemonId}
@@ -150,7 +180,7 @@ const styles = StyleSheet.create({
   menuButton: {
     width: 44,
     height: 44,
-    borderRadius: theme.roundness.md,
+    borderRadius: theme.roundness.full,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.glass,
@@ -158,22 +188,29 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.glassBorder,
   },
   menuIcon: {
-    fontSize: 24,
+    fontSize: 20,
     color: theme.colors.textPrimary,
   },
   headerTitleContainer: {
     alignItems: 'center',
   },
-  headerSubtitle: {
+  headerEyebrow: {
     fontSize: 10,
+    fontWeight: '700',
     textTransform: 'uppercase',
     color: theme.colors.textSecondary,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: theme.colors.textPrimary,
+    lineHeight: 24,
+  },
+  headerCount: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    marginTop: 1,
   },
   headerPlaceholder: {
     width: 44,
@@ -182,14 +219,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
   },
   loadingText: {
-    marginTop: theme.spacing.md,
     color: theme.colors.textSecondary,
     fontSize: 14,
+    textAlign: 'center',
   },
   listContent: {
     padding: theme.spacing.xs,
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: theme.spacing.xxl,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,31 +19,92 @@ import { PokemonDetailModal } from '../components/PokemonDetailModal';
 import { PokemonDetails } from '../types/pokemon';
 
 export const SearchScreen = () => {
-  const [nameInput, setNameInput] = useState<string>('');
+  const [nameInput,   setNameInput]   = useState<string>('');
   const [numberInput, setNumberInput] = useState<string>('');
-  
-  const [loading, setLoading] = useState<boolean>(false);
-  const [pokemon, setPokemon] = useState<PokemonDetails | null>(null);
-  const [error, setError] = useState<string>('');
-
-  // State for detail modal
+  const [loading,     setLoading]     = useState<boolean>(false);
+  const [pokemon,     setPokemon]     = useState<PokemonDetails | null>(null);
+  const [error,       setError]       = useState<string>('');
   const [detailVisible, setDetailVisible] = useState<boolean>(false);
+  const [nameFocused,   setNameFocused]   = useState<boolean>(false);
+  const [numFocused,    setNumFocused]    = useState<boolean>(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  // ── Entrance animations ──────────────────────────────────────────────────
+  const headerFade  = useRef(new Animated.Value(0)).current;
+  const headerSlide = useRef(new Animated.Value(-12)).current;
+  const cardFade    = useRef(new Animated.Value(0)).current;
+  const cardSlide   = useRef(new Animated.Value(20)).current;
+
+  // ── Error shake ──────────────────────────────────────────────────────────
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  // ── Input focus border interpolations (JS driver) ────────────────────────
+  const nameBorderAnim = useRef(new Animated.Value(0)).current;
+  const numBorderAnim  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(headerFade,  { toValue: 1, duration: 380, useNativeDriver: true }),
+        Animated.spring(headerSlide, { toValue: 0, friction: 7, tension: 60, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(cardFade,  { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.spring(cardSlide, { toValue: 0, friction: 7, tension: 60, useNativeDriver: true }),
+      ]),
+    ]).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Animate input border colour on focus
+  useEffect(() => {
+    Animated.timing(nameBorderAnim, {
+      toValue: nameFocused ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
     }).start();
-  }, [fadeAnim]);
+  }, [nameFocused, nameBorderAnim]);
+
+  useEffect(() => {
+    Animated.timing(numBorderAnim, {
+      toValue: numFocused ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [numFocused, numBorderAnim]);
+
+  const triggerShake = useCallback(() => {
+    shakeAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue:  8, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:  5, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -5, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:  0, duration: 40, useNativeDriver: true }),
+    ]).start();
+  }, [shakeAnim]);
+
+  const performSearch = useCallback(async (query: string | number): Promise<void> => {
+    setLoading(true);
+    setError('');
+    setPokemon(null);
+    try {
+      const data = await getPokemonDetails(query);
+      setPokemon(data);
+    } catch (err) {
+      const msg = (err as Error).message || 'Pokémon not found. Check your search term.';
+      setError(msg);
+      triggerShake();
+    } finally {
+      setLoading(false);
+    }
+  }, [triggerShake]);
 
   const handleSearchByName = async () => {
     Keyboard.dismiss();
     if (!nameInput.trim()) {
-      setError('Por favor, digite um nome de Pokémon.');
+      setError('Please enter a Pokémon name.');
       setPokemon(null);
+      triggerShake();
       return;
     }
     await performSearch(nameInput.trim().toLowerCase());
@@ -53,125 +114,132 @@ export const SearchScreen = () => {
     Keyboard.dismiss();
     const num = parseInt(numberInput, 10);
     if (isNaN(num) || num <= 0) {
-      setError('Por favor, insira um número válido (maior que zero).');
+      setError('Please enter a valid number (greater than zero).');
       setPokemon(null);
+      triggerShake();
       return;
     }
     await performSearch(num);
   };
 
-  const performSearch = async (query: string | number): Promise<void> => {
-    setLoading(true);
-    setError('');
-    setPokemon(null);
-    try {
-      const data = await getPokemonDetails(query);
-      setPokemon(data);
-    } catch (err) {
-      setError((err as Error).message || 'Pokémon não encontrado. Verifique o termo de pesquisa.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCardPress = () => {
-    if (pokemon) {
-      setDetailVisible(true);
-    }
-  };
+  const nameBorderColor  = nameBorderAnim.interpolate({ inputRange: [0, 1], outputRange: [theme.colors.border, theme.colors.accent] });
+  const numBorderColor   = numBorderAnim.interpolate({  inputRange: [0, 1], outputRange: [theme.colors.border, theme.colors.primary] });
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={styles.container}>
-        <Animated.ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
-          style={{ opacity: fadeAnim }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerSubtitle}>Search Pokémon</Text>
-            <Text style={styles.headerTitle}>Pokédex Search</Text>
-          </View>
+          {/* ── Header ──────────────────────────────────────────────── */}
+          <Animated.View
+            style={[
+              styles.header,
+              { opacity: headerFade, transform: [{ translateY: headerSlide }] },
+            ]}
+          >
+            <Text style={styles.headerEyebrow}>Pokédex</Text>
+            <Text style={styles.headerTitle}>Search</Text>
+            <Text style={styles.headerSub}>Find any Pokémon by name or number</Text>
+          </Animated.View>
 
-          {/* Form Container */}
-          <View style={styles.formCard}>
+          {/* ── Form card ───────────────────────────────────────────── */}
+          <Animated.View
+            style={[
+              styles.formCard,
+              { opacity: cardFade, transform: [{ translateY: cardSlide }] },
+            ]}
+          >
             {/* Search by Name */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Buscar por Nome</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Ex: bulbasaur, pikachu..."
-                placeholderTextColor={theme.colors.textSecondary}
-                value={nameInput}
-                onChangeText={(val) => {
-                  setNameInput(val);
-                  setError('');
-                }}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+              <Text style={styles.inputLabel}>Search by Name</Text>
+              <Animated.View style={[styles.inputWrapper, { borderColor: nameBorderColor }]}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. bulbasaur, pikachu…"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={nameInput}
+                  onChangeText={(val) => { setNameInput(val); setError(''); }}
+                  onFocus={() => setNameFocused(true)}
+                  onBlur={() => setNameFocused(false)}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="search"
+                  onSubmitEditing={handleSearchByName}
+                />
+              </Animated.View>
               <TouchableOpacity
                 onPress={handleSearchByName}
                 style={[styles.button, styles.nameButton]}
                 activeOpacity={0.8}
               >
-                <Text style={styles.buttonText}>BUSCAR POR NOME</Text>
+                <Text style={styles.buttonText}>SEARCH BY NAME</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Separator line */}
+            {/* Separator */}
             <View style={styles.separatorContainer}>
               <View style={styles.separatorLine} />
-              <Text style={styles.separatorText}>OU</Text>
+              <Text style={styles.separatorText}>OR</Text>
               <View style={styles.separatorLine} />
             </View>
 
-            {/* Search by ID/Number */}
+            {/* Search by Number */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Buscar por Número (ID)</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Ex: 1, 25, 150..."
-                placeholderTextColor={theme.colors.textSecondary}
-                value={numberInput}
-                onChangeText={(val) => {
-                  setNumberInput(val);
-                  setError('');
-                }}
-                keyboardType="numeric"
-              />
+              <Text style={styles.inputLabel}>Search by Number (ID)</Text>
+              <Animated.View style={[styles.inputWrapper, { borderColor: numBorderColor }]}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. 1, 25, 150…"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={numberInput}
+                  onChangeText={(val) => { setNumberInput(val); setError(''); }}
+                  onFocus={() => setNumFocused(true)}
+                  onBlur={() => setNumFocused(false)}
+                  keyboardType="numeric"
+                  returnKeyType="search"
+                  onSubmitEditing={handleSearchByNumber}
+                />
+              </Animated.View>
               <TouchableOpacity
                 onPress={handleSearchByNumber}
                 style={[styles.button, styles.numberButton]}
                 activeOpacity={0.8}
               >
-                <Text style={styles.buttonText}>BUSCAR POR NUMERO</Text>
+                <Text style={styles.buttonText}>SEARCH BY NUMBER</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
 
-          {/* Loading Indicator */}
+          {/* ── Loading ─────────────────────────────────────────────── */}
           {loading && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={styles.loadingText}>Procurando no banco de dados...</Text>
+              <Text style={styles.loadingText}>Searching the Pokédex…</Text>
             </View>
           )}
 
-          {/* Error Message */}
+          {/* ── Error (with shake) ───────────────────────────────────── */}
           {error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>✕ {error}</Text>
-            </View>
+            <Animated.View
+              style={[
+                styles.errorContainer,
+                { transform: [{ translateX: shakeAnim }] },
+              ]}
+            >
+              <Text style={styles.errorIcon}>⚠️</Text>
+              <Text style={styles.errorText}>{error}</Text>
+            </Animated.View>
           ) : null}
 
-          {/* Conditional Layout block: unmounted until pokemon is successfully loaded */}
+          {/* ── Result card ─────────────────────────────────────────── */}
           {pokemon && (
-            <SearchCard pokemon={pokemon} onPress={handleCardPress} />
+            <SearchCard pokemon={pokemon} onPress={() => setDetailVisible(true)} />
           )}
-        </Animated.ScrollView>
+        </ScrollView>
 
-        {/* Detail Modal */}
         {pokemon && (
           <PokemonDetailModal
             visible={detailVisible}
@@ -191,78 +259,84 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xl,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
   },
+
+  // Header
   header: {
     marginBottom: theme.spacing.lg,
   },
-  headerSubtitle: {
-    fontSize: 12,
+  headerEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.primary,
+    letterSpacing: 2,
     textTransform: 'uppercase',
-    color: theme.colors.textSecondary,
-    letterSpacing: 1.5,
+    marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '900',
     color: theme.colors.textPrimary,
+    letterSpacing: -0.5,
+    lineHeight: 40,
   },
+  headerSub: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginTop: 4,
+  },
+
+  // Form card
   formCard: {
     backgroundColor: theme.colors.cardBackground,
     borderRadius: theme.roundness.lg,
     padding: theme.spacing.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...theme.shadows.soft,
   },
   inputGroup: {
     marginVertical: theme.spacing.xs,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 13,
+    fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
+    letterSpacing: 0.3,
+  },
+  inputWrapper: {
+    borderWidth: 1.5,
+    borderRadius: theme.roundness.md,
+    marginBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
+    overflow: 'hidden',
   },
   textInput: {
-    backgroundColor: theme.colors.background,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.roundness.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     color: theme.colors.textPrimary,
     fontSize: 16,
-    marginBottom: theme.spacing.sm,
   },
   button: {
     borderRadius: theme.roundness.md,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
+    ...theme.shadows.soft,
   },
-  nameButton: {
-    backgroundColor: theme.colors.accent,
-  },
-  numberButton: {
-    backgroundColor: theme.colors.primary,
-  },
+  nameButton:   { backgroundColor: theme.colors.accent   },
+  numberButton: { backgroundColor: theme.colors.primary  },
   buttonText: {
     color: theme.colors.white,
-    fontWeight: 'bold',
-    fontSize: 14,
-    letterSpacing: 0.5,
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 0.8,
   },
+
+  // Separator
   separatorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -276,19 +350,27 @@ const styles = StyleSheet.create({
   separatorText: {
     color: theme.colors.textSecondary,
     paddingHorizontal: theme.spacing.md,
-    fontWeight: 'bold',
-    fontSize: 12,
+    fontWeight: '700',
+    fontSize: 11,
+    letterSpacing: 1,
   },
+
+  // Loading
   loadingContainer: {
     marginTop: theme.spacing.xl,
     alignItems: 'center',
+    gap: 10,
   },
   loadingText: {
-    marginTop: theme.spacing.sm,
     color: theme.colors.textSecondary,
     fontSize: 14,
   },
+
+  // Error
   errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: 'rgba(227, 53, 13, 0.1)',
     borderColor: theme.colors.primary,
     borderWidth: 1,
@@ -296,10 +378,13 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginTop: theme.spacing.lg,
   },
+  errorIcon: {
+    fontSize: 18,
+  },
   errorText: {
+    flex: 1,
     color: theme.colors.primary,
-    fontWeight: 'bold',
-    fontSize: 14,
-    textAlign: 'center',
+    fontWeight: '700',
+    fontSize: 13,
   },
 });

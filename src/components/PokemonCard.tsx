@@ -1,5 +1,12 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } from 'react-native';
+import React, { useRef, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Animated,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { theme } from '../styles/theme';
 import { PokemonSummary } from '../types/pokemon';
 
@@ -10,46 +17,73 @@ interface PokemonCardProps {
   index?: number;
 }
 
-export const PokemonCard = ({ pokemon, useArtwork = false, onPress, index = 0 }: PokemonCardProps) => {
-  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
-  const formattedId = `#${String(pokemon.id).padStart(4, '0')}`;
+export const PokemonCard = ({
+  pokemon,
+  useArtwork = false,
+  onPress,
+  index = 0,
+}: PokemonCardProps) => {
+  const capitalize   = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+  const formattedId  = `#${String(pokemon.id).padStart(4, '0')}`;
 
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  // Entrance
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(28)).current;
+
+  // Press interaction
+  const pressScale   = useRef(new Animated.Value(1)).current;
+  const glowOpacity  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    const delay = (index % 12) * 40;
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 350,
-        delay: (index % 10) * 50,
+        duration: 380,
+        delay,
         useNativeDriver: true,
       }),
-      Animated.timing(slideAnim, {
+      Animated.spring(slideAnim, {
         toValue: 0,
-        duration: 350,
-        delay: (index % 10) * 50,
+        friction: 7,
+        tension: 60,
+        delay,
         useNativeDriver: true,
       }),
     ]).start();
   }, [fadeAnim, slideAnim, index]);
 
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.95,
-      useNativeDriver: true,
-    }).start();
-  };
+  const handlePressIn = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(pressScale, {
+        toValue: 0.93,
+        friction: 4,
+        tension: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glowOpacity, {
+        toValue: 1,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [pressScale, glowOpacity]);
 
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 4,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
-  };
+  const handlePressOut = useCallback(() => {
+    Animated.parallel([
+      Animated.spring(pressScale, {
+        toValue: 1,
+        friction: 3,      // slight overshoot
+        tension: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glowOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [pressScale, glowOpacity]);
 
   return (
     <TouchableWithoutFeedback
@@ -63,13 +97,19 @@ export const PokemonCard = ({ pokemon, useArtwork = false, onPress, index = 0 }:
           {
             opacity: fadeAnim,
             transform: [
-              { scale: scaleAnim },
-              { translateY: slideAnim }
-            ]
-          }
+              { scale: pressScale },
+              { translateY: slideAnim },
+            ],
+          },
         ]}
       >
-        {/* Pokeball Watermark decoration */}
+        {/* Glow overlay on press */}
+        <Animated.View
+          style={[styles.glowOverlay, { opacity: glowOpacity }]}
+          pointerEvents="none"
+        />
+
+        {/* Pokéball watermark decoration */}
         <View style={styles.watermarkContainer}>
           <View style={styles.watermarkOuter} />
           <View style={styles.watermarkLine} />
@@ -78,12 +118,10 @@ export const PokemonCard = ({ pokemon, useArtwork = false, onPress, index = 0 }:
 
         <Image
           source={{ uri: useArtwork ? pokemon.artwork : pokemon.sprite }}
-          style={[
-            styles.image,
-            useArtwork ? styles.artworkImage : styles.spriteImage,
-          ]}
+          style={[styles.image, useArtwork ? styles.artworkImage : styles.spriteImage]}
           resizeMode="contain"
         />
+
         <View style={styles.info}>
           <Text style={styles.id}>{formattedId}</Text>
           <Text style={styles.name} numberOfLines={1}>
@@ -110,6 +148,12 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
+  glowOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: theme.roundness.md,
+    zIndex: 2,
+  },
   image: {
     alignSelf: 'center',
     marginBottom: theme.spacing.sm,
@@ -128,44 +172,46 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   id: {
-    fontSize: 12,
+    fontSize: 11,
     color: theme.colors.textSecondary,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginBottom: 2,
+    letterSpacing: 0.5,
   },
   name: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 'bold',
     color: theme.colors.textPrimary,
+    letterSpacing: 0.2,
   },
   watermarkContainer: {
     position: 'absolute',
-    right: -20,
-    bottom: -20,
-    width: 100,
-    height: 100,
-    opacity: 0.05,
+    right: -22,
+    bottom: -22,
+    width: 110,
+    height: 110,
+    opacity: 0.07,
     justifyContent: 'center',
     alignItems: 'center',
   },
   watermarkOuter: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 10,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 11,
     borderColor: '#FFFFFF',
   },
   watermarkLine: {
     position: 'absolute',
-    width: 100,
-    height: 10,
+    width: 110,
+    height: 11,
     backgroundColor: '#FFFFFF',
   },
   watermarkInner: {
     position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 8,
     borderColor: '#FFFFFF',
     backgroundColor: theme.colors.cardBackground,

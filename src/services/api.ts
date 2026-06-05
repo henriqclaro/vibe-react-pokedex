@@ -1,4 +1,4 @@
-import { PokemonDetails, PokemonSummary } from '../types/pokemon';
+import { PokemonDetails, PokemonStat, PokemonSummary } from '../types/pokemon';
 
 const BASE_URL = 'https://pokeapi.co/api/v2';
 
@@ -26,18 +26,25 @@ export const TYPES: string[] = [
 // ---------------------------------------------------------------------------
 // In-Memory Caches
 // ---------------------------------------------------------------------------
-const regionCache = new Map<string, PokemonSummary[]>();
-const typeCache = new Map<string, PokemonSummary[]>();
-const detailCache = new Map<string | number, PokemonDetails>();
+const regionCache  = new Map<string, PokemonSummary[]>();
+const typeCache    = new Map<string, PokemonSummary[]>();
+const detailCache  = new Map<string | number, PokemonDetails>();
+const speciesCache = new Map<number, string>(); // id → english flavor text
 
 /**
  * Extracts the numerical ID from a PokeAPI resource URL.
- * e.g., "https://pokeapi.co/api/v2/pokemon/25/" -> 25
+ * e.g., "https://pokeapi.co/api/v2/pokemon/25/" → 25
  */
 const extractIdFromUrl = (url: string): number => {
   const parts = url.split('/').filter(Boolean);
   return parseInt(parts[parts.length - 1], 10);
 };
+
+/**
+ * Cleans raw flavor-text escape characters inserted by PokeAPI.
+ */
+const cleanFlavorText = (raw: string): string =>
+  raw.replace(/[\n\f\r\t]/g, ' ').replace(/  +/g, ' ').trim();
 
 /**
  * Helper to get default sprite image URL by ID
@@ -50,6 +57,33 @@ export const getDefaultSprite = (id: number): string =>
  */
 export const getOfficialArtwork = (id: number): string =>
   `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+
+/**
+ * Fetches and caches the latest English Pokédex flavor text for a given species ID.
+ */
+const getFlavorText = async (pokemonId: number): Promise<string> => {
+  if (speciesCache.has(pokemonId)) {
+    return speciesCache.get(pokemonId)!;
+  }
+
+  try {
+    const res = await fetch(`${BASE_URL}/pokemon-species/${pokemonId}`);
+    if (!res.ok) return '';
+
+    const data = await res.json();
+    const entries: Array<{ flavor_text: string; language: { name: string } }> =
+      data.flavor_text_entries ?? [];
+
+    // Pick the last English entry (most recent game version)
+    const english = entries.filter((e) => e.language.name === 'en');
+    const text = english.length > 0 ? cleanFlavorText(english[english.length - 1].flavor_text) : '';
+
+    speciesCache.set(pokemonId, text);
+    return text;
+  } catch {
+    return '';
+  }
+};
 
 /**
  * Fetches Pokémon by region using pagination.
@@ -115,7 +149,8 @@ export const getPokemonsByType = async (typeName: string): Promise<PokemonSummar
 
 /**
  * Fetches full details for a single Pokémon by name or ID.
- * Results are cached in-memory — subsequent calls for the same pokemon are instant.
+ * Runs the main Pokémon fetch and the species fetch in parallel.
+ * Results are cached in-memory — subsequent calls are instant.
  */
 export const getPokemonDetails = async (nameOrId: string | number): Promise<PokemonDetails> => {
   const cacheKey = typeof nameOrId === 'string' ? nameOrId.toLowerCase().trim() : nameOrId;
@@ -130,13 +165,32 @@ export const getPokemonDetails = async (nameOrId: string | number): Promise<Poke
   }
 
   const data = await response.json();
+
+  // Fetch species data in parallel (non-blocking; falls back to '' on error)
+  const flavorText = await getFlavorText(data.id);
+
+  // Map the six base stats
+  const stats: PokemonStat[] = data.stats.map(
+    (s: { stat: { name: string }; base_stat: number }) => ({
+      name: s.stat.name,
+      baseStat: s.base_stat,
+    }),
+  );
+
   const details: PokemonDetails = {
     id: data.id,
     name: data.name,
     sprite: data.sprites.front_default || getDefaultSprite(data.id),
-    artwork: data.sprites.other['official-artwork'].front_default || getOfficialArtwork(data.id),
+    artwork:
+      data.sprites.other['official-artwork'].front_default || getOfficialArtwork(data.id),
     types: data.types.map((t: { type: { name: string } }) => t.type.name),
     attacks: data.moves.slice(0, 15).map((m: { move: { name: string } }) => m.move.name),
+    stats,
+    // PokeAPI uses decimetres for height and hectograms for weight
+    height: parseFloat((data.height / 10).toFixed(1)),
+    weight: parseFloat((data.weight / 10).toFixed(1)),
+    baseExperience: data.base_experience ?? 0,
+    flavorText,
   };
 
   // Cache under both the query key and the canonical numeric id

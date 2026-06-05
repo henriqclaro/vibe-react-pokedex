@@ -1,5 +1,12 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } from 'react-native';
+import React, { useRef, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Animated,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { theme } from '../styles/theme';
 import { PokemonDetails } from '../types/pokemon';
 
@@ -9,42 +16,53 @@ interface SearchCardProps {
 }
 
 export const SearchCard = ({ pokemon, onPress }: SearchCardProps) => {
-  const capitalize = (str: string) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+  const capitalize = (str: string) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : '');
+  const formattedId = `#${String(pokemon.id).padStart(4, '0')}`;
 
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  // Primary type colour for the accent ring and background tint
+  const primaryType  = pokemon.types[0] ?? 'normal';
+  const typeColor    = (theme.colors.types as Record<string, string>)[primaryType] ?? theme.colors.primary;
+
+  // Entrance animation
+  const slideAnim = useRef(new Animated.Value(40)).current;
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
+
+  // Press animation
+  const pressScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 300,
+        duration: 350,
         useNativeDriver: true,
       }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 5,
-        tension: 40,
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 6,
+        tension: 55,
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, scaleAnim]);
+  }, [fadeAnim, slideAnim]);
 
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.96,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
+  const handlePressIn = useCallback(() => {
+    Animated.spring(pressScale, {
+      toValue: 0.97,
       friction: 4,
-      tension: 40,
+      tension: 200,
       useNativeDriver: true,
     }).start();
-  };
+  }, [pressScale]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(pressScale, {
+      toValue: 1,
+      friction: 3,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  }, [pressScale]);
 
   return (
     <TouchableWithoutFeedback
@@ -57,36 +75,51 @@ export const SearchCard = ({ pokemon, onPress }: SearchCardProps) => {
           styles.card,
           {
             opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          }
+            transform: [
+              { scale: pressScale },
+              { translateY: slideAnim },
+            ],
+            borderColor: `${typeColor}44`,
+          },
         ]}
       >
-        {/* Decorative Pokeball background decoration */}
-        <View style={styles.watermarkContainer}>
-          <View style={styles.watermarkOuter} />
-          <View style={styles.watermarkLine} />
-          <View style={styles.watermarkInner} />
-        </View>
-
-        <Image
-          source={{ uri: pokemon.artwork }}
-          style={styles.artwork}
-          resizeMode="contain"
+        {/* Subtle type-tinted background */}
+        <View
+          style={[styles.typeTint, { backgroundColor: `${typeColor}10` }]}
+          pointerEvents="none"
         />
 
-        <View style={styles.content}>
-          <Text style={styles.number}>Número: {pokemon.id}</Text>
-          <Text style={styles.name}>Nome: {capitalize(pokemon.name)}</Text>
-          
-          {/* Render types badges in search card */}
-          {pokemon.types && pokemon.types.length > 0 && (
+        {/* Left — artwork with type-coloured ring */}
+        <View style={[styles.artworkWrapper, { borderColor: typeColor }]}>
+          <Image
+            source={{ uri: pokemon.artwork }}
+            style={styles.artwork}
+            resizeMode="contain"
+          />
+        </View>
+
+        {/* Right — info */}
+        <View style={styles.infoColumn}>
+          {/* ID chip */}
+          <View style={[styles.idChip, { backgroundColor: `${typeColor}22` }]}>
+            <Text style={[styles.idText, { color: typeColor }]}>{formattedId}</Text>
+          </View>
+
+          <Text style={styles.name}>{capitalize(pokemon.name)}</Text>
+
+          {/* Type badges */}
+          {pokemon.types.length > 0 && (
             <View style={styles.typesRow}>
               {pokemon.types.map((type) => (
                 <View
                   key={type}
                   style={[
                     styles.typeBadge,
-                    { backgroundColor: theme.colors.types[type] || theme.colors.primary },
+                    {
+                      backgroundColor:
+                        (theme.colors.types as Record<string, string>)[type] ??
+                        theme.colors.primary,
+                    },
                   ]}
                 >
                   <Text style={styles.typeText}>{capitalize(type)}</Text>
@@ -95,7 +128,11 @@ export const SearchCard = ({ pokemon, onPress }: SearchCardProps) => {
             </View>
           )}
 
-          <Text style={styles.tapPrompt}>Pressione para ver mais detalhes</Text>
+          {/* CTA */}
+          <View style={styles.ctaRow}>
+            <Text style={[styles.ctaText, { color: typeColor }]}>Tap to explore</Text>
+            <Text style={[styles.ctaChevron, { color: typeColor }]}>›</Text>
+          </View>
         </View>
       </Animated.View>
     </TouchableWithoutFeedback>
@@ -108,91 +145,88 @@ const styles = StyleSheet.create({
     borderRadius: theme.roundness.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: theme.spacing.lg,
     marginTop: theme.spacing.lg,
     width: '100%',
+    flexDirection: 'row',
     alignItems: 'center',
-    position: 'relative',
+    padding: theme.spacing.md,
     overflow: 'hidden',
+    position: 'relative',
     ...theme.shadows.strong,
   },
-  artwork: {
-    width: 180,
-    height: 180,
-    marginBottom: theme.spacing.md,
-    zIndex: 1,
+  typeTint: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: theme.roundness.lg,
   },
-  content: {
+  artworkWrapper: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    marginRight: theme.spacing.md,
+    overflow: 'hidden',
+    flexShrink: 0,
   },
-  number: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    fontWeight: 'bold',
-    marginBottom: 4,
+  artwork: {
+    width: 105,
+    height: 105,
+  },
+  infoColumn: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 6,
+  },
+  idChip: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.roundness.sm,
+  },
+  idText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   name: {
     fontSize: 22,
     fontWeight: 'bold',
     color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.md,
+    letterSpacing: 0.3,
   },
   typesRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: theme.spacing.md,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   typeBadge: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 3,
     borderRadius: theme.roundness.full,
-    marginHorizontal: 4,
   },
   typeText: {
     color: theme.colors.white,
-    fontWeight: 'bold',
-    fontSize: 12,
+    fontWeight: '700',
+    fontSize: 11,
+    letterSpacing: 0.3,
   },
-  tapPrompt: {
-    fontSize: 12,
-    color: theme.colors.primary,
-    fontWeight: '600',
-    marginTop: theme.spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  // Custom simple vector Pokeball watermark
-  watermarkContainer: {
-    position: 'absolute',
-    top: -20,
-    left: -20,
-    width: 120,
-    height: 120,
-    opacity: 0.04,
-    justifyContent: 'center',
+  ctaRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 2,
+    marginTop: 2,
   },
-  watermarkOuter: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 12,
-    borderColor: '#FFFFFF',
+  ctaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  watermarkLine: {
-    position: 'absolute',
-    width: 120,
-    height: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  watermarkInner: {
-    position: 'absolute',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 10,
-    borderColor: '#FFFFFF',
-    backgroundColor: theme.colors.cardBackground,
+  ctaChevron: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    lineHeight: 18,
   },
 });
