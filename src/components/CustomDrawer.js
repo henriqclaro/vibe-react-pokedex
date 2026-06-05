@@ -9,8 +9,8 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   FlatList,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
 
 const { width } = Dimensions.get('window');

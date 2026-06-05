@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
 import { getPokemonDetails } from '../services/api';
 

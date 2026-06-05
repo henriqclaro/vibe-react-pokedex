@@ -1,6 +1,6 @@
 # PokeAPI App
 
-App mobile e web construído com **Expo SDK 55** + **React Native 0.83.6**, consumindo a [PokéAPI](https://pokeapi.co) para exibir informações sobre Pokémon.
+App mobile e web construído com **Expo SDK 54** + **React Native 0.81.5**, consumindo a [PokéAPI](https://pokeapi.co) para exibir informações sobre Pokémon.
 
 ---
 
@@ -8,16 +8,15 @@ App mobile e web construído com **Expo SDK 55** + **React Native 0.83.6**, cons
 
 | Pacote | Versão |
 |--------|--------|
-| Expo SDK | 55.0.0 |
-| React Native | 0.83.6 |
-| React | 19.2.0 |
+| Expo SDK | 54.0.0 |
+| React Native | 0.81.5 |
+| React | 19.1.0 |
 | @react-navigation/native | ^7.1.6 |
 | @react-navigation/bottom-tabs | ^7.3.10 |
-| expo-status-bar | ~55.0.6 |
+| expo-status-bar | ~3.0.9 |
 | react-native-safe-area-context | ~5.6.0 |
-| react-native-screens | ~4.23.0 |
-| react-native-web | ^0.21.0 |
-| @expo/metro-runtime | ~55.0.11 |
+| react-native-screens | ~4.16.0 |
+| react-native-web | (web) |
 
 ---
 
@@ -34,6 +33,7 @@ App mobile e web construído com **Expo SDK 55** + **React Native 0.83.6**, cons
 ## Instalação
 
 ```sh
+# Instalar dependências
 npm install
 ```
 
