@@ -1,9 +1,15 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } from 'react-native';
 import { theme } from '../styles/theme';
+import { PokemonDetails } from '../types/pokemon';
 
-export const SearchCard = ({ pokemon, onPress }) => {
-  const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+interface SearchCardProps {
+  pokemon: PokemonDetails;
+  onPress: () => void;
+}
+
+export const SearchCard = ({ pokemon, onPress }: SearchCardProps) => {
+  const capitalize = (str: string) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
 
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;

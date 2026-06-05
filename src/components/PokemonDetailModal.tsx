@@ -13,11 +13,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
 import { getPokemonDetails } from '../services/api';
+import { PokemonDetails } from '../types/pokemon';
 
-export const PokemonDetailModal = ({ visible, pokemonIdOrName, onClose }) => {
-  const [loading, setLoading] = useState(false);
-  const [pokemon, setPokemon] = useState(null);
-  const [error, setError] = useState('');
+interface PokemonDetailModalProps {
+  visible: boolean;
+  pokemonIdOrName: string | number | null;
+  onClose: () => void;
+}
+
+export const PokemonDetailModal = ({ visible, pokemonIdOrName, onClose }: PokemonDetailModalProps) => {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [pokemon, setPokemon] = useState<PokemonDetails | null>(null);
+  const [error, setError] = useState<string>('');
 
   const fetchDetails = useCallback(async () => {
     setLoading(true);
@@ -26,7 +33,7 @@ export const PokemonDetailModal = ({ visible, pokemonIdOrName, onClose }) => {
       const details = await getPokemonDetails(pokemonIdOrName);
       setPokemon(details);
     } catch (err) {
-      setError(err.message || 'Erro ao carregar detalhes.');
+      setError((err as Error).message || 'Erro ao carregar detalhes.');
     } finally {
       setLoading(false);
     }
@@ -73,14 +80,14 @@ export const PokemonDetailModal = ({ visible, pokemonIdOrName, onClose }) => {
     }
   }, [pokemon, visible, artworkScale, artworkOpacity, cardTranslateY]);
 
-  const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+  const capitalize = (str: string) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
   const formattedId = pokemon ? `#${String(pokemon.id).padStart(4, '0')}` : '';
 
   // Get color of first type or default primary
-  const getHeaderBgColor = () => {
+  const getHeaderBgColor = (): string => {
     if (pokemon && pokemon.types.length > 0) {
       const mainType = pokemon.types[0];
-      return theme.colors.types[mainType] || theme.colors.primary;
+      return (theme.colors.types as Record<string, string>)[mainType] || theme.colors.primary;
     }
     return theme.colors.primary;
   };

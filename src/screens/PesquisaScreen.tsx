@@ -16,17 +16,18 @@ import { theme } from '../styles/theme';
 import { getPokemonDetails } from '../services/api';
 import { SearchCard } from '../components/SearchCard';
 import { PokemonDetailModal } from '../components/PokemonDetailModal';
+import { PokemonDetails } from '../types/pokemon';
 
 export const PesquisaScreen = () => {
-  const [nameInput, setNameInput] = useState('');
-  const [numberInput, setNumberInput] = useState('');
+  const [nameInput, setNameInput] = useState<string>('');
+  const [numberInput, setNumberInput] = useState<string>('');
   
-  const [loading, setLoading] = useState(false);
-  const [pokemon, setPokemon] = useState(null);
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [pokemon, setPokemon] = useState<PokemonDetails | null>(null);
+  const [error, setError] = useState<string>('');
 
   // State for detail modal
-  const [detailVisible, setDetailVisible] = useState(false);
+  const [detailVisible, setDetailVisible] = useState<boolean>(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -59,7 +60,7 @@ export const PesquisaScreen = () => {
     await performSearch(num);
   };
 
-  const performSearch = async (query) => {
+  const performSearch = async (query: string | number): Promise<void> => {
     setLoading(true);
     setError('');
     setPokemon(null);
@@ -67,7 +68,7 @@ export const PesquisaScreen = () => {
       const data = await getPokemonDetails(query);
       setPokemon(data);
     } catch (err) {
-      setError(err.message || 'Pokémon não encontrado. Verifique o termo de pesquisa.');
+      setError((err as Error).message || 'Pokémon não encontrado. Verifique o termo de pesquisa.');
     } finally {
       setLoading(false);
     }

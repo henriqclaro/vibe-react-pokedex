@@ -14,18 +14,21 @@ import { getPokemonsByRegion, REGIONS } from '../services/api';
 import { PokemonCard } from '../components/PokemonCard';
 import { CustomDrawer } from '../components/CustomDrawer';
 import { PokemonDetailModal } from '../components/PokemonDetailModal';
+import { PokemonSummary } from '../types/pokemon';
 
 const REGION_OPTIONS = Object.keys(REGIONS);
+// Approximate card height for getItemLayout optimization (padding + image + text)
+const CARD_HEIGHT = 160;
 
 export const TemporadasScreen = () => {
-  const [selectedRegion, setSelectedRegion] = useState('Kanto');
-  const [pokemons, setPokemons] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState<string>('Kanto');
+  const [pokemons, setPokemons] = useState<PokemonSummary[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
   
   // State for detail modal
-  const [detailVisible, setDetailVisible] = useState(false);
-  const [selectedPokemonId, setSelectedPokemonId] = useState(null);
+  const [detailVisible, setDetailVisible] = useState<boolean>(false);
+  const [selectedPokemonId, setSelectedPokemonId] = useState<number | null>(null);
 
   const headerFadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -53,7 +56,7 @@ export const TemporadasScreen = () => {
     fetchPokemons();
   }, [selectedRegion, fetchPokemons]);
 
-  const handleCardPress = (id) => {
+  const handleCardPress = (id: number) => {
     setSelectedPokemonId(id);
     setDetailVisible(true);
   };
@@ -84,7 +87,7 @@ export const TemporadasScreen = () => {
           <Text style={styles.loadingText}>Carregando Pokémons...</Text>
         </View>
       ) : (
-        <FlatList
+        <FlatList<PokemonSummary>
           data={pokemons}
           keyExtractor={(item) => String(item.id)}
           numColumns={2}
@@ -93,7 +96,12 @@ export const TemporadasScreen = () => {
           maxToRenderPerBatch={10}
           windowSize={5}
           removeClippedSubviews={true}
-          renderItem={({ item, index }) => (
+          getItemLayout={(_data, index) => ({
+            length: CARD_HEIGHT,
+            offset: CARD_HEIGHT * Math.floor(index / 2),
+            index,
+          })}
+          renderItem={({ item, index }: { item: PokemonSummary; index: number }) => (
             <PokemonCard
               pokemon={item}
               useArtwork={false} // Uses default sprite as requested

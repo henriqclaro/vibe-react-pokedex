@@ -13,16 +13,20 @@ import { getPokemonsByType, TYPES } from '../services/api';
 import { PokemonCard } from '../components/PokemonCard';
 import { CustomDrawer } from '../components/CustomDrawer';
 import { PokemonDetailModal } from '../components/PokemonDetailModal';
+import { PokemonSummary } from '../types/pokemon';
+
+// Approximate card height for getItemLayout optimization
+const CARD_HEIGHT = 175;
 
 export const TiposScreen = () => {
-  const [selectedType, setSelectedType] = useState('normal');
-  const [pokemons, setPokemons] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [selectedType, setSelectedType] = useState<string>('normal');
+  const [pokemons, setPokemons] = useState<PokemonSummary[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
 
   // State for detail modal
-  const [detailVisible, setDetailVisible] = useState(false);
-  const [selectedPokemonId, setSelectedPokemonId] = useState(null);
+  const [detailVisible, setDetailVisible] = useState<boolean>(false);
+  const [selectedPokemonId, setSelectedPokemonId] = useState<number | null>(null);
 
   const fetchPokemons = useCallback(async () => {
     setLoading(true);
@@ -40,12 +44,12 @@ export const TiposScreen = () => {
     fetchPokemons();
   }, [selectedType, fetchPokemons]);
 
-  const handleCardPress = (id) => {
+  const handleCardPress = (id: number) => {
     setSelectedPokemonId(id);
     setDetailVisible(true);
   };
 
-  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   // Dynamic style based on selected type
   const typeColor = theme.colors.types[selectedType] || theme.colors.primary;
@@ -80,7 +84,7 @@ export const TiposScreen = () => {
           <Text style={styles.loadingText}>Carregando Tipo {capitalize(selectedType)}...</Text>
         </View>
       ) : (
-        <FlatList
+        <FlatList<PokemonSummary>
           data={pokemons}
           keyExtractor={(item) => String(item.id)}
           numColumns={2}
@@ -89,7 +93,12 @@ export const TiposScreen = () => {
           maxToRenderPerBatch={10}
           windowSize={5}
           removeClippedSubviews={true}
-          renderItem={({ item }) => (
+          getItemLayout={(_data, index) => ({
+            length: CARD_HEIGHT,
+            offset: CARD_HEIGHT * Math.floor(index / 2),
+            index,
+          })}
+          renderItem={({ item }: { item: PokemonSummary }) => (
             <PokemonCard
               pokemon={item}
               useArtwork={true} // Renders standard official artwork as requested

@@ -1,9 +1,17 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } from 'react-native';
 import { theme } from '../styles/theme';
+import { PokemonSummary } from '../types/pokemon';
 
-export const PokemonCard = ({ pokemon, useArtwork = false, onPress, index = 0 }) => {
-  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+interface PokemonCardProps {
+  pokemon: PokemonSummary;
+  useArtwork?: boolean;
+  onPress: () => void;
+  index?: number;
+}
+
+export const PokemonCard = ({ pokemon, useArtwork = false, onPress, index = 0 }: PokemonCardProps) => {
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
   const formattedId = `#${String(pokemon.id).padStart(4, '0')}`;
 
   const scaleAnim = useRef(new Animated.Value(1)).current;

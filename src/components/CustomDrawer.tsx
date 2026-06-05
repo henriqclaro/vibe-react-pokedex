@@ -16,6 +16,15 @@ import { theme } from '../styles/theme';
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.75;
 
+interface CustomDrawerProps {
+  visible: boolean;
+  onClose: () => void;
+  options: string[];
+  selectedOption: string;
+  onSelect: (item: string) => void;
+  title: string;
+}
+
 export const CustomDrawer = ({
   visible,
   onClose,
@@ -23,7 +32,7 @@ export const CustomDrawer = ({
   selectedOption,
   onSelect,
   title,
-}) => {
+}: CustomDrawerProps) => {
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -60,7 +69,7 @@ export const CustomDrawer = ({
     }
   }, [visible, fadeAnim, slideAnim]);
 
-  const handleSelect = (item) => {
+  const handleSelect = (item: string) => {
     // Slide out drawer first
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -79,7 +88,7 @@ export const CustomDrawer = ({
     });
   };
 
-  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   return (
     <Modal
