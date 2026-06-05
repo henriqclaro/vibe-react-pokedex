@@ -6,8 +6,8 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
 import { getPokemonsByRegion, REGIONS } from '../services/api';
 import { PokemonCard } from '../components/PokemonCard';

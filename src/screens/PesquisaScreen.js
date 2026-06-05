@@ -8,9 +8,9 @@ import {
   ActivityIndicator,
   Keyboard,
   TouchableWithoutFeedback,
-  SafeAreaView,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
 import { getPokemonDetails } from '../services/api';
 import { SearchCard } from '../components/SearchCard';
