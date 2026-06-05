@@ -1,35 +1,31 @@
-# PokeAPI App
+# App PokeAPI
 
-## ATENÇÃO: ESTE PROJETO FOI DESENVOLVIDO COM O AUXÍLIO DE INTELIGÊNCIA ARTIFICIAL, NO AMBIENTE GOOGLE ANTIGRAVITY, PARA FINS EDUCACIONAIS.
+## ⚠️ Este projeto foi desenvolvido com o auxílio de Inteligência Artificial (Google Antigravity) para fins educacionais.
 
-App mobile e web construído com **Expo SDK 55** + **React Native 0.83.6**, consumindo a [PokéAPI](https://pokeapi.co) para exibir informações sobre Pokémon.
+Aplicativo mobile e web construído com **Expo SDK 55** + **React Native 0.83.6**, consumindo a [PokéAPI](https://pokeapi.co) para navegar pelas informações dos Pokémon.
 
 ---
 
 ## Tecnologias
 
 | Pacote | Versão |
-|--------|--------|
+|---|---|
 | Expo SDK | 55.0.0 |
 | React Native | 0.83.6 |
 | React | 19.2.0 |
-| @react-navigation/native | ^7.1.6 |
 | @react-navigation/bottom-tabs | ^7.3.10 |
 | expo-status-bar | ~55.0.6 |
 | react-native-safe-area-context | ~5.6.0 |
 | react-native-screens | ~4.23.0 |
 | react-native-web | ^0.21.0 |
-| @expo/metro-runtime | ~55.0.11 |
 
 ---
 
 ## Pré-requisitos
 
 - **Node.js** >= 18.0.0
-- **npm** ou **yarn**
-- Para Android: Android Studio + emulador configurado
-- Para iOS: macOS + Xcode
-- Para testar no dispositivo físico: app **[Expo Go](https://expo.dev/go)**
+- **npm**
+- Para testar em um dispositivo físico: aplicativo **[Expo Go](https://expo.dev/go)**
 
 ---
 
@@ -41,109 +37,83 @@ npm install
 
 ---
 
-## Como executar
+## Como Executar
 
-### Dev server (mobile — Expo Go)
+### Servidor de Desenvolvimento (Expo Go)
 
 ```sh
 npx expo start
 ```
 
-Escaneie o QR code com o app **Expo Go** (Android) ou com a câmera do iPhone (iOS).
+Escaneie o código QR com o Expo Go (Android) ou com a câmera do iPhone (iOS).
 
 ### Web
 
 ```sh
 npx expo start --web
-# ou pressione 'w' no terminal após iniciar o dev server
-```
-
-### Android (emulador / dispositivo)
-
-```sh
-npx expo run:android
-```
-
-### iOS (apenas macOS)
-
-```sh
-npx expo run:ios
+# ou pressione 'w' no terminal após iniciar o servidor de desenvolvimento
 ```
 
 ---
 
-## Estrutura do projeto
+## Estrutura do Projeto
 
 ```
 PokeAPI/
-├── assets/              # Ícones e splash screen
+├── assets/              # Ícones e tela de splash
 ├── src/
-│   ├── screens/         # Telas do app
-│   │   ├── SeasonsScreen.tsx
-│   │   ├── SearchScreen.tsx
-│   │   └── TypesScreen.tsx
-│   ├── components/      # Componentes reutilizáveis
-│   │   ├── PokemonCard.tsx
-│   │   ├── PokemonDetailModal.tsx
-│   │   ├── SearchCard.tsx
-│   │   └── CustomDrawer.tsx
-│   ├── services/        # Chamadas à PokéAPI
-│   └── styles/
-│       └── theme.ts     # Design tokens / cores
-├── App.tsx              # Navegação e root component
-├── index.js             # Entry point (registerRootComponent)
-├── app.json             # Configuração Expo
-├── babel.config.js      # Preset: babel-preset-expo
-└── metro.config.js      # Bundler: expo/metro-config
+│   ├── screens/
+│   │   ├── SeasonsScreen.tsx   # Navegar por Pokémon por região
+│   │   ├── SearchScreen.tsx    # Buscar Pokémon por nome ou ID
+│   │   └── TypesScreen.tsx     # Navegar por Pokémon por tipo
+│   ├── components/
+│   │   ├── PokemonCard.tsx         # Card do grid
+│   │   ├── PokemonDetailModal.tsx  # Ficha detalhada completa (status, informações, movimentos)
+│   │   ├── SearchCard.tsx          # Card de resultado de busca
+│   │   └── CustomDrawer.tsx        # Menu lateral de opções de filtro
+│   ├── services/
+│   │   └── api.ts           # Chamadas da PokéAPI + cache em memória
+│   ├── styles/
+│   │   └── theme.ts         # Design tokens (cores, espaçamento, tipografia)
+│   └── types/
+│       └── pokemon.ts       # Interfaces TypeScript
+├── App.tsx              # Raiz de navegação + barra de abas personalizada animada
+├── index.js             # Ponto de entrada (registerRootComponent)
+├── app.json             # Configuração do Expo
+├── babel.config.js      # babel-preset-expo
+└── metro.config.js      # expo/metro-config
 ```
 
 ---
 
 ## Telas
 
-- **Seasons** — Lista de gerações/regiões Pokémon
-- **Search** — Busca de Pokémon por nome ou número
-- **Types** — Explorador de tipos (Fogo, Água, Elétrico…)
+- **Seasons** — Navegue por Pokémon por geração/região (Kanto → Paldea)
+- **Search** — Busque Pokémon por nome ou número da Pokédex
+- **Types** — Navegue por Pokémon filtrados por tipo (Fogo, Água, Elétrico…)
+
+Todas as telas compartilham um design system unificado em modo escuro e animação de entrada no cabeçalho. Tocar em qualquer card de Pokémon abre uma ficha detalhada com abas para Tipos, Status Base, Informações da Pokédex e Movimentos.
 
 ---
 
-## Comandos úteis
+## Comandos Úteis
 
 ```sh
-# Verificar saúde do projeto Expo
-npx expo-doctor@latest
+# Limpar o cache do Metro se algo parecer desatualizado
+npx expo start --clear
 
-# Checar e corrigir versões de dependências
+# Verificar a compatibilidade dos pacotes do Expo
 npx expo install --check
 
-# Build para produção (requer conta Expo / EAS)
-npx eas build
-```
-
----
-
-## Troubleshooting
-
-**Web não abre / erro `react-native-web`**
-```sh
-npx expo install react-native-web react-dom @expo/metro-runtime
-```
-
-**Bundler travado com cache**
-```sh
-npx expo start --clear
-```
-
-**Conflito de dependências ao instalar**
-```sh
-npm install --legacy-peer-deps
+# Verificação de tipos com TypeScript (esperado 0 erros)
+npx tsc --noEmit
 ```
 
 ---
 
 ## Recursos
 
-- [Documentação Expo](https://docs.expo.dev)
+- [Documentação do Expo](https://docs.expo.dev)
 - [PokéAPI](https://pokeapi.co)
 - [React Navigation v7](https://reactnavigation.org)
 - [Expo Go](https://expo.dev/go)
