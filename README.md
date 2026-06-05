@@ -1,5 +1,7 @@
 # PokeAPI App
 
+## ATENÇÃO: ESTE PROJETO FOI DESENVOLVIDO COM O AUXÍLIO DE INTELIGÊNCIA ARTIFICIAL, NO AMBIENTE GOOGLE ANTIGRAVITY, PARA FINS EDUCACIONAIS.
+
 App mobile e web construído com **Expo SDK 55** + **React Native 0.83.6**, consumindo a [PokéAPI](https://pokeapi.co) para exibir informações sobre Pokémon.
 
 ---
@@ -77,18 +79,18 @@ PokeAPI/
 ├── assets/              # Ícones e splash screen
 ├── src/
 │   ├── screens/         # Telas do app
-│   │   ├── TemporadasScreen.js
-│   │   ├── PesquisaScreen.js
-│   │   └── TiposScreen.js
+│   │   ├── SeasonsScreen.tsx
+│   │   ├── SearchScreen.tsx
+│   │   └── TypesScreen.tsx
 │   ├── components/      # Componentes reutilizáveis
-│   │   ├── PokemonCard.js
-│   │   ├── PokemonDetailModal.js
-│   │   ├── SearchCard.js
-│   │   └── CustomDrawer.js
+│   │   ├── PokemonCard.tsx
+│   │   ├── PokemonDetailModal.tsx
+│   │   ├── SearchCard.tsx
+│   │   └── CustomDrawer.tsx
 │   ├── services/        # Chamadas à PokéAPI
 │   └── styles/
-│       └── theme.js     # Design tokens / cores
-├── App.js               # Navegação e root component
+│       └── theme.ts     # Design tokens / cores
+├── App.tsx              # Navegação e root component
 ├── index.js             # Entry point (registerRootComponent)
 ├── app.json             # Configuração Expo
 ├── babel.config.js      # Preset: babel-preset-expo
@@ -99,9 +101,9 @@ PokeAPI/
 
 ## Telas
 
-- **Temporadas** — Lista de gerações/regiões Pokémon
-- **Pesquisa** — Busca de Pokémon por nome ou número
-- **Tipos** — Explorador de tipos (Fogo, Água, Elétrico…)
+- **Seasons** — Lista de gerações/regiões Pokémon
+- **Search** — Busca de Pokémon por nome ou número
+- **Types** — Explorador de tipos (Fogo, Água, Elétrico…)
 
 ---
 

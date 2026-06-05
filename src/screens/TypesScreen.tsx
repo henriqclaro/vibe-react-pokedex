@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,85 +6,82 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
-  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
-import { getPokemonsByRegion, REGIONS } from '../services/api';
+import { getPokemonsByType, TYPES } from '../services/api';
 import { PokemonCard } from '../components/PokemonCard';
 import { CustomDrawer } from '../components/CustomDrawer';
 import { PokemonDetailModal } from '../components/PokemonDetailModal';
 import { PokemonSummary } from '../types/pokemon';
 
-const REGION_OPTIONS = Object.keys(REGIONS);
-// Approximate card height for getItemLayout optimization (padding + image + text)
-const CARD_HEIGHT = 160;
+// Approximate card height for getItemLayout optimization
+const CARD_HEIGHT = 175;
 
-export const TemporadasScreen = () => {
-  const [selectedRegion, setSelectedRegion] = useState<string>('Kanto');
+export const TypesScreen = () => {
+  const [selectedType, setSelectedType] = useState<string>('normal');
   const [pokemons, setPokemons] = useState<PokemonSummary[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
-  
+
   // State for detail modal
   const [detailVisible, setDetailVisible] = useState<boolean>(false);
   const [selectedPokemonId, setSelectedPokemonId] = useState<number | null>(null);
 
-  const headerFadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(headerFadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, [headerFadeAnim]);
-
   const fetchPokemons = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getPokemonsByRegion(selectedRegion);
+      const data = await getPokemonsByType(selectedType);
       setPokemons(data);
     } catch (error) {
-      console.error('Error fetching regional pokemon:', error);
+      console.error('Error fetching type pokemon:', error);
     } finally {
       setLoading(false);
     }
-  }, [selectedRegion]);
+  }, [selectedType]);
 
   useEffect(() => {
     fetchPokemons();
-  }, [selectedRegion, fetchPokemons]);
+  }, [selectedType, fetchPokemons]);
 
   const handleCardPress = (id: number) => {
     setSelectedPokemonId(id);
     setDetailVisible(true);
   };
 
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+
+  // Dynamic style based on selected type
+  const typeColor = theme.colors.types[selectedType] || theme.colors.primary;
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Custom Header */}
-      <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
+      {/* Header */}
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => setDrawerVisible(true)}
-          style={styles.menuButton}
+          style={[styles.menuButton, { borderColor: typeColor }]}
           activeOpacity={0.7}
         >
-          <Text style={styles.menuIcon}>☰</Text>
+          <Text style={[styles.menuIcon, { color: typeColor }]}>☰</Text>
         </TouchableOpacity>
+
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerSubtitle}>Região</Text>
-          <Text style={styles.headerTitle}>{selectedRegion}</Text>
+          <Text style={styles.headerSubtitle}>Filtered by Type</Text>
+          <View style={[styles.typeHeaderBadge, { backgroundColor: typeColor }]}>
+            <Text style={styles.typeHeaderText}>{capitalize(selectedType)}</Text>
+          </View>
         </View>
-        {/* Placeholder to balance the menu button layout */}
+
+        {/* Balance layout */}
         <View style={styles.headerPlaceholder} />
-      </Animated.View>
+      </View>
 
       {/* Loading state / Grid List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Carregando Pokémons...</Text>
+          <ActivityIndicator size="large" color={typeColor} />
+          <Text style={styles.loadingText}>Carregando Tipo {capitalize(selectedType)}...</Text>
         </View>
       ) : (
         <FlatList<PokemonSummary>
@@ -101,25 +98,24 @@ export const TemporadasScreen = () => {
             offset: CARD_HEIGHT * Math.floor(index / 2),
             index,
           })}
-          renderItem={({ item, index }: { item: PokemonSummary; index: number }) => (
+          renderItem={({ item }: { item: PokemonSummary }) => (
             <PokemonCard
               pokemon={item}
-              useArtwork={false} // Uses default sprite as requested
+              useArtwork={true} // Renders standard official artwork as requested
               onPress={() => handleCardPress(item.id)}
-              index={index}
             />
           )}
         />
       )}
 
-      {/* Regional Drawer overlay */}
+      {/* Types Selection Drawer */}
       <CustomDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
-        options={REGION_OPTIONS}
-        selectedOption={selectedRegion}
-        onSelect={setSelectedRegion}
-        title="Selecionar Região"
+        options={TYPES}
+        selectedOption={selectedType}
+        onSelect={setSelectedType}
+        title="Selecionar Tipo"
       />
 
       {/* Detail Modal */}
@@ -154,12 +150,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.glass,
-    borderWidth: 1,
-    borderColor: theme.colors.glassBorder,
+    borderWidth: 1.5,
   },
   menuIcon: {
     fontSize: 24,
-    color: theme.colors.textPrimary,
+    fontWeight: 'bold',
   },
   headerTitleContainer: {
     alignItems: 'center',
@@ -169,11 +164,17 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: theme.colors.textSecondary,
     letterSpacing: 1,
+    marginBottom: 2,
   },
-  headerTitle: {
-    fontSize: 18,
+  typeHeaderBadge: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 2,
+    borderRadius: theme.roundness.full,
+  },
+  typeHeaderText: {
+    fontSize: 14,
     fontWeight: 'bold',
-    color: theme.colors.textPrimary,
+    color: theme.colors.white,
   },
   headerPlaceholder: {
     width: 44,

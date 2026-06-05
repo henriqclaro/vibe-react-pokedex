@@ -18,7 +18,7 @@ import { SearchCard } from '../components/SearchCard';
 import { PokemonDetailModal } from '../components/PokemonDetailModal';
 import { PokemonDetails } from '../types/pokemon';
 
-export const PesquisaScreen = () => {
+export const SearchScreen = () => {
   const [nameInput, setNameInput] = useState<string>('');
   const [numberInput, setNumberInput] = useState<string>('');
   
@@ -89,7 +89,7 @@ export const PesquisaScreen = () => {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerSubtitle}>Pesquisar Pokémon</Text>
+            <Text style={styles.headerSubtitle}>Search Pokémon</Text>
             <Text style={styles.headerTitle}>Pokédex Search</Text>
           </View>
 

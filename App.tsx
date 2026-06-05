@@ -7,19 +7,19 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { theme } from './src/styles/theme';
-import { TemporadasScreen } from './src/screens/TemporadasScreen';
-import { PesquisaScreen } from './src/screens/PesquisaScreen';
-import { TiposScreen } from './src/screens/TiposScreen';
+import { SeasonsScreen } from './src/screens/SeasonsScreen';
+import { SearchScreen } from './src/screens/SearchScreen';
+import { TypesScreen } from './src/screens/TypesScreen';
 
 const Tab = createBottomTabNavigator();
 
-const TabBarIcon = ({ route, focused }) => {
+const TabBarIcon = ({ route, focused }: { route: { name: string }; focused: boolean }) => {
   let icon = '';
-  if (route.name === 'Temporadas') {
+  if (route.name === 'Seasons') {
     icon = '🗺️';
-  } else if (route.name === 'Pesquisa') {
+  } else if (route.name === 'Search') {
     icon = '🔍';
-  } else if (route.name === 'Tipos') {
+  } else if (route.name === 'Types') {
     icon = '⚡';
   }
 
@@ -48,19 +48,19 @@ export default function App() {
           })}
         >
           <Tab.Screen 
-            name="Temporadas" 
-            component={TemporadasScreen} 
-            options={{ title: 'Temporadas' }}
+            name="Seasons" 
+            component={SeasonsScreen} 
+            options={{ title: 'Seasons' }}
           />
           <Tab.Screen 
-            name="Pesquisa" 
-            component={PesquisaScreen} 
-            options={{ title: 'Pesquisa' }}
+            name="Search" 
+            component={SearchScreen} 
+            options={{ title: 'Search' }}
           />
           <Tab.Screen 
-            name="Tipos" 
-            component={TiposScreen} 
-            options={{ title: 'Tipos' }}
+            name="Types" 
+            component={TypesScreen} 
+            options={{ title: 'Types' }}
           />
         </Tab.Navigator>
       </NavigationContainer>
