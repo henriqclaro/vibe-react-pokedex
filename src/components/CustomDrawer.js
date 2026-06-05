@@ -36,9 +36,10 @@ export const CustomDrawer = ({
           duration: 250,
           useNativeDriver: true,
         }),
-        Animated.timing(slideAnim, {
+        Animated.spring(slideAnim, {
           toValue: 0,
-          duration: 250,
+          friction: 6,
+          tension: 40,
           useNativeDriver: true,
         }),
       ]).start();

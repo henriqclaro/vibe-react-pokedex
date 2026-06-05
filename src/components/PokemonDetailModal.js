@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
@@ -31,6 +32,10 @@ export const PokemonDetailModal = ({ visible, pokemonIdOrName, onClose }) => {
     }
   }, [pokemonIdOrName]);
 
+  const artworkScale = useRef(new Animated.Value(0.5)).current;
+  const artworkOpacity = useRef(new Animated.Value(0)).current;
+  const cardTranslateY = useRef(new Animated.Value(200)).current;
+
   useEffect(() => {
     if (visible && pokemonIdOrName) {
       fetchDetails();
@@ -39,6 +44,34 @@ export const PokemonDetailModal = ({ visible, pokemonIdOrName, onClose }) => {
       setError('');
     }
   }, [visible, pokemonIdOrName, fetchDetails]);
+
+  useEffect(() => {
+    if (pokemon && visible) {
+      Animated.parallel([
+        Animated.spring(artworkScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(artworkOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(cardTranslateY, {
+          toValue: 0,
+          friction: 7,
+          tension: 40,
+          useNativeDriver: true,
+        })
+      ]).start();
+    } else {
+      artworkScale.setValue(0.5);
+      artworkOpacity.setValue(0);
+      cardTranslateY.setValue(200);
+    }
+  }, [pokemon, visible, artworkScale, artworkOpacity, cardTranslateY]);
 
   const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
   const formattedId = pokemon ? `#${String(pokemon.id).padStart(4, '0')}` : '';
@@ -85,59 +118,70 @@ export const PokemonDetailModal = ({ visible, pokemonIdOrName, onClose }) => {
             <View style={styles.visualSection}>
               {/* Pokeball decorative background */}
               <View style={styles.visualBgOuter} />
-              
-              <Image
+
+              <Animated.Image
                 source={{ uri: pokemon.artwork }}
-                style={styles.artwork}
+                style={[
+                  styles.artwork,
+                  {
+                    opacity: artworkOpacity,
+                    transform: [{ scale: artworkScale }],
+                  }
+                ]}
                 resizeMode="contain"
               />
             </View>
 
             {/* Details Card Section */}
-            <View style={styles.detailsCard}>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.name}>{capitalize(pokemon.name)}</Text>
-                  <Text style={styles.idText}>{formattedId}</Text>
-                </View>
+            <Animated.View
+              style={[
+                styles.detailsCard,
+                { transform: [{ translateY: cardTranslateY }] }
+              ]}
+            >
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+              <View style={styles.nameRow}>
+                <Text style={styles.name}>{capitalize(pokemon.name)}</Text>
+                <Text style={styles.idText}>{formattedId}</Text>
+              </View>
 
-                {/* Types badges */}
-                <Text style={styles.sectionTitle}>Tipos</Text>
-                <View style={styles.typesRow}>
-                  {pokemon.types.map((type) => (
-                    <View
-                      key={type}
-                      style={[
-                        styles.typeBadge,
-                        { backgroundColor: theme.colors.types[type] || theme.colors.textSecondary },
-                      ]}
-                    >
-                      <Text style={styles.typeText}>{capitalize(type)}</Text>
+              {/* Types badges */}
+              <Text style={styles.sectionTitle}>Tipos</Text>
+              <View style={styles.typesRow}>
+                {pokemon.types.map((type) => (
+                  <View
+                    key={type}
+                    style={[
+                      styles.typeBadge,
+                      { backgroundColor: theme.colors.types[type] || theme.colors.textSecondary },
+                    ]}
+                  >
+                    <Text style={styles.typeText}>{capitalize(type)}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Attacks section */}
+              <Text style={styles.sectionTitle}>Ataques & Movimentos</Text>
+              {pokemon.attacks.length === 0 ? (
+                <Text style={styles.noDataText}>Nenhum ataque encontrado.</Text>
+              ) : (
+                <View style={styles.attacksContainer}>
+                  {pokemon.attacks.map((attack) => (
+                    <View key={attack} style={styles.attackChip}>
+                      <Text style={styles.attackText}>
+                        {capitalize(attack.replace('-', ' '))}
+                      </Text>
                     </View>
                   ))}
                 </View>
-
-                {/* Attacks section */}
-                <Text style={styles.sectionTitle}>Ataques & Movimentos</Text>
-                {pokemon.attacks.length === 0 ? (
-                  <Text style={styles.noDataText}>Nenhum ataque encontrado.</Text>
-                ) : (
-                  <View style={styles.attacksContainer}>
-                    {pokemon.attacks.map((attack) => (
-                      <View key={attack} style={styles.attackChip}>
-                        <Text style={styles.attackText}>
-                          {capitalize(attack.replace('-', ' '))}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </ScrollView>
-            </View>
+              )}
+            </ScrollView>
+          </Animated.View>
           </View>
         ) : null}
-      </SafeAreaView>
-    </Modal>
+    </SafeAreaView>
+    </Modal >
   );
 };
 
@@ -225,6 +269,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: theme.roundness.lg,
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.lg,
+    ...theme.shadows.strong,
   },
   scrollContent: {
     paddingBottom: theme.spacing.xl,

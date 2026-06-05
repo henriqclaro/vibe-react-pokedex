@@ -1,41 +1,89 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } from 'react-native';
 import { theme } from '../styles/theme';
 
-export const PokemonCard = ({ pokemon, useArtwork = false, onPress }) => {
+export const PokemonCard = ({ pokemon, useArtwork = false, onPress, index = 0 }) => {
   const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
   const formattedId = `#${String(pokemon.id).padStart(4, '0')}`;
 
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        pressed && styles.cardPressed,
-      ]}
-      onPress={onPress}
-    >
-      {/* Pokeball Watermark decoration */}
-      <View style={styles.watermarkContainer}>
-        <View style={styles.watermarkOuter} />
-        <View style={styles.watermarkLine} />
-        <View style={styles.watermarkInner} />
-      </View>
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
 
-      <Image
-        source={{ uri: useArtwork ? pokemon.artwork : pokemon.sprite }}
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 350,
+        delay: (index % 10) * 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 350,
+        delay: (index % 10) * 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim, index]);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 4,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <TouchableWithoutFeedback
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View
         style={[
-          styles.image,
-          useArtwork ? styles.artworkImage : styles.spriteImage,
+          styles.card,
+          {
+            opacity: fadeAnim,
+            transform: [
+              { scale: scaleAnim },
+              { translateY: slideAnim }
+            ]
+          }
         ]}
-        resizeMode="contain"
-      />
-      <View style={styles.info}>
-        <Text style={styles.id}>{formattedId}</Text>
-        <Text style={styles.name} numberOfLines={1}>
-          {capitalize(pokemon.name)}
-        </Text>
-      </View>
-    </Pressable>
+      >
+        {/* Pokeball Watermark decoration */}
+        <View style={styles.watermarkContainer}>
+          <View style={styles.watermarkOuter} />
+          <View style={styles.watermarkLine} />
+          <View style={styles.watermarkInner} />
+        </View>
+
+        <Image
+          source={{ uri: useArtwork ? pokemon.artwork : pokemon.sprite }}
+          style={[
+            styles.image,
+            useArtwork ? styles.artworkImage : styles.spriteImage,
+          ]}
+          resizeMode="contain"
+        />
+        <View style={styles.info}>
+          <Text style={styles.id}>{formattedId}</Text>
+          <Text style={styles.name} numberOfLines={1}>
+            {capitalize(pokemon.name)}
+          </Text>
+        </View>
+      </Animated.View>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -50,18 +98,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: theme.colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...theme.shadows.soft,
     position: 'relative',
     overflow: 'hidden',
-  },
-  cardPressed: {
-    backgroundColor: theme.colors.cardBackgroundHover,
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
   },
   image: {
     alignSelf: 'center',
@@ -91,7 +130,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: theme.colors.textPrimary,
   },
-  // Custom simple vector Pokeball watermark
   watermarkContainer: {
     position: 'absolute',
     right: -20,

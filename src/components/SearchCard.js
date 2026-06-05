@@ -1,55 +1,98 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, Animated, TouchableWithoutFeedback } from 'react-native';
 import { theme } from '../styles/theme';
 
 export const SearchCard = ({ pokemon, onPress }) => {
   const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
 
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 5,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, scaleAnim]);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 4,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        pressed && styles.cardPressed,
-      ]}
+    <TouchableWithoutFeedback
       onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
     >
-      {/* Decorative Pokeball background decoration */}
-      <View style={styles.watermarkContainer}>
-        <View style={styles.watermarkOuter} />
-        <View style={styles.watermarkLine} />
-        <View style={styles.watermarkInner} />
-      </View>
+      <Animated.View
+        style={[
+          styles.card,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          }
+        ]}
+      >
+        {/* Decorative Pokeball background decoration */}
+        <View style={styles.watermarkContainer}>
+          <View style={styles.watermarkOuter} />
+          <View style={styles.watermarkLine} />
+          <View style={styles.watermarkInner} />
+        </View>
 
-      <Image
-        source={{ uri: pokemon.artwork }}
-        style={styles.artwork}
-        resizeMode="contain"
-      />
+        <Image
+          source={{ uri: pokemon.artwork }}
+          style={styles.artwork}
+          resizeMode="contain"
+        />
 
-      <View style={styles.content}>
-        <Text style={styles.number}>Número: {pokemon.id}</Text>
-        <Text style={styles.name}>Nome: {capitalize(pokemon.name)}</Text>
-        
-        {/* Render types badges in search card */}
-        {pokemon.types && pokemon.types.length > 0 && (
-          <View style={styles.typesRow}>
-            {pokemon.types.map((type) => (
-              <View
-                key={type}
-                style={[
-                  styles.typeBadge,
-                  { backgroundColor: theme.colors.types[type] || theme.colors.primary },
-                ]}
-              >
-                <Text style={styles.typeText}>{capitalize(type)}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        <View style={styles.content}>
+          <Text style={styles.number}>Número: {pokemon.id}</Text>
+          <Text style={styles.name}>Nome: {capitalize(pokemon.name)}</Text>
+          
+          {/* Render types badges in search card */}
+          {pokemon.types && pokemon.types.length > 0 && (
+            <View style={styles.typesRow}>
+              {pokemon.types.map((type) => (
+                <View
+                  key={type}
+                  style={[
+                    styles.typeBadge,
+                    { backgroundColor: theme.colors.types[type] || theme.colors.primary },
+                  ]}
+                >
+                  <Text style={styles.typeText}>{capitalize(type)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
-        <Text style={styles.tapPrompt}>Pressione para ver mais detalhes</Text>
-      </View>
-    </Pressable>
+          <Text style={styles.tapPrompt}>Pressione para ver mais detalhes</Text>
+        </View>
+      </Animated.View>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -65,15 +108,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  cardPressed: {
-    backgroundColor: theme.colors.cardBackgroundHover,
-    opacity: 0.95,
+    ...theme.shadows.strong,
   },
   artwork: {
     width: 180,

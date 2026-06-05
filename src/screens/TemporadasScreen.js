@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
@@ -25,6 +26,16 @@ export const TemporadasScreen = () => {
   // State for detail modal
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedPokemonId, setSelectedPokemonId] = useState(null);
+
+  const headerFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(headerFadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [headerFadeAnim]);
 
   const fetchPokemons = useCallback(async () => {
     setLoading(true);
@@ -50,7 +61,7 @@ export const TemporadasScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Custom Header */}
-      <View style={styles.header}>
+      <Animated.View style={[styles.header, { opacity: headerFadeAnim }]}>
         <TouchableOpacity
           onPress={() => setDrawerVisible(true)}
           style={styles.menuButton}
@@ -64,7 +75,7 @@ export const TemporadasScreen = () => {
         </View>
         {/* Placeholder to balance the menu button layout */}
         <View style={styles.headerPlaceholder} />
-      </View>
+      </Animated.View>
 
       {/* Loading state / Grid List */}
       {loading ? (
@@ -82,11 +93,12 @@ export const TemporadasScreen = () => {
           maxToRenderPerBatch={10}
           windowSize={5}
           removeClippedSubviews={true}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <PokemonCard
               pokemon={item}
               useArtwork={false} // Uses default sprite as requested
               onPress={() => handleCardPress(item.id)}
+              index={index}
             />
           )}
         />

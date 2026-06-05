@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
@@ -26,6 +27,16 @@ export const PesquisaScreen = () => {
 
   // State for detail modal
   const [detailVisible, setDetailVisible] = useState(false);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
 
   const handleSearchByName = async () => {
     Keyboard.dismiss();
@@ -71,7 +82,10 @@ export const PesquisaScreen = () => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Animated.ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          style={{ opacity: fadeAnim }}
+        >
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerSubtitle}>Pesquisar Pokémon</Text>
@@ -154,7 +168,7 @@ export const PesquisaScreen = () => {
           {pokemon && (
             <SearchCard pokemon={pokemon} onPress={handleCardPress} />
           )}
-        </ScrollView>
+        </Animated.ScrollView>
 
         {/* Detail Modal */}
         {pokemon && (
