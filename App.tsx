@@ -36,6 +36,7 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="light" backgroundColor={theme.colors.cardBackground} />
         <Tab.Navigator
+          id="MainTabs"
           screenOptions={({ route }) => ({
             headerShown: false,
             tabBarIcon: ({ focused }) => <TabBarIcon route={route} focused={focused} />,
